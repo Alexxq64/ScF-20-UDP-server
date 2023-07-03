@@ -7,7 +7,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <unistd.h>
+#include <unistd.h
+#include <cstring>
 typedef int SOCKET;
 const int INVALID_SOCKET = -1;
 const int SOCKET_ERROR = -1;
