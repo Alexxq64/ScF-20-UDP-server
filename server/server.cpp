@@ -1,4 +1,21 @@
-﻿#define _WINSOCK_DEPRECATED_NO_WARNINGS
+﻿/*
+there are a lot of ideas to improve this chat
+add forwarding messages through the server
+save history of messages that go through the server
+save all clients in a data base
+registration with password
+remove clients from chat when quitting
+make private list for each client in data base
+add chat with choosed client in separate console to avoid multiple input of repeated info
+add thread for server to work with its console
+add message to all
+profile editing
+add color to output
+split source files to main, source.h and .cpp, and cross-depended files 
+*/
+
+
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <iostream>
 #include <winsock2.h>
 #include <vector>
