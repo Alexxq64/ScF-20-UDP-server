@@ -1,46 +1,6 @@
-﻿#define _WINSOCK_DEPRECATED_NO_WARNINGS
+﻿#include "server.h"
+#include "chatDB.h"
 
-#ifdef _WIN32
-#include <winsock2.h>
-#pragma comment(lib, "ws2_32.lib")
-#else
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h
-#include <cstring>
-typedef int SOCKET;
-const int INVALID_SOCKET = -1;
-const int SOCKET_ERROR = -1;
-#define closesocket(s) close(s)
-#endif
-
-#include <iostream>
-#include <vector>
-#include <map>
-#include <string>
-
-#define PORT 12345
-
-struct Client {
-    std::string name;
-    std::string ip;
-    int port;
-
-    void print(std::string position = "Name") const {
-        std::cout << position << ": " << name << "\t\tIP : " << ip << "\tPort : " << port << std::endl;
-    }
-};
-
-std::vector<Client> clients;
-
-SOCKET serverSocket;
-sockaddr_in serverAddress;
-sockaddr_in clientAddress;
-char buffer[1024];
-int bytesReceived;
-char command;
-std::string text;
 
 std::string getIP(const sockaddr_in& socketAddress) {
     char* ip = inet_ntoa(socketAddress.sin_addr);
@@ -70,20 +30,16 @@ bool sendMessageTo(const std::string& text, const sockaddr_in& address) {
 }
 
 bool startServer() {
-#ifdef _WIN32
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         std::cerr << "Failed to initialize winsock" << std::endl;
         return false;
     }
-#endif
 
     serverSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (serverSocket == INVALID_SOCKET) {
         std::cerr << "Failed to create socket" << std::endl;
-#ifdef _WIN32
         WSACleanup();
-#endif
         return false;
     }
 
@@ -94,9 +50,7 @@ bool startServer() {
     if (bind(serverSocket, (const sockaddr*)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR) {
         std::cerr << "Failed to bind socket" << std::endl;
         closesocket(serverSocket);
-#ifdef _WIN32
         WSACleanup();
-#endif
         return false;
     }
 
@@ -106,54 +60,67 @@ bool startServer() {
 
 void getMessage() {
     memset(buffer, 0, sizeof(buffer));
-#ifdef _WIN32
     int clientAddressSize = sizeof(clientAddress);
-#else
-    socklen_t clientAddressSize = sizeof(clientAddress);
-#endif
     bytesReceived = recvfrom(serverSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddress, &clientAddressSize);
     if (bytesReceived == SOCKET_ERROR) {
         std::cerr << "Failed to receive message" << std::endl;
     }
     std::cout << "Received from " << getIP(clientAddress) << " : " << getPort(clientAddress) << " ---> " << buffer << std::endl;
 }
-void registerNewClient(const std::string& newName) {
-    Client newClient;
-    newClient.name = newName;
-    newClient.ip = getIP(clientAddress);
-    newClient.port = getPort(clientAddress);
-    std::cout << "New client: " << newClient.name << std::endl;
-    clients.push_back(newClient);
-    for (const auto& c : clients) {
-        c.print("    ");
+
+void registerClient(const std::string& cName) {
+    currentClientName = cName;
+    if (isSignedUp(cName)) {
+                sendMessageTo("C:", clientAddress); // Instruct the client to verify the password
     }
-    std::cout << std::endl;
+    else {
+        insertNewClient(cName, getIP(clientAddress), getPort(clientAddress));
+        sendMessageTo("P:", clientAddress); // Instruct the client to enter the password
+    }
 }
 
+
 bool checkClient(const std::string& checkName) {
+    currentClientName = checkName;
     std::string text = "E";
-    for (const auto& c : clients) {
-        if (checkName == c.name) {
-            std::cout << checkName << " is in the list" << std::endl;
-            text = text + ":" + c.ip + ":" + std::to_string(c.port);
+        if (isSignedIn(checkName)) {
+            std::cout << checkName << " is in the chat now" << std::endl;
+            text = text + ":" + getIP(clientAddress) + ":" + std::to_string(getPort(clientAddress));
             sendMessageTo(text, clientAddress);
             return true;
         }
-    }
+        if (isSignedUp(checkName)) {
+            std::cout << checkName << " is in the list, but now is not in the chat" << std::endl;
+            sendMessageTo("A", clientAddress);
+            return true;
+        }
     std::cout << checkName << " is not in the list" << std::endl;
     sendMessageTo("N:", clientAddress);
     return false;
 }
 
-void clientsList() {
-    std::string list = "L";
-    std::cout << text << std::endl;
-    for (const auto& c : clients) {
-        list += ":" + c.name;
-    }
-    list += ".";
-    sendMessageTo(list, clientAddress);
-}
+//void clientsList() {
+    //std::string list = "L";
+        //sql::mysql::MySQL_Driver* driver = sql::mysql::get_mysql_driver_instance();
+        //std::unique_ptr<sql::Connection> con(driver->connect("tcp://hostname:port", "username", "password"));
+        //con->setSchema("mySQL_chat");
+
+        //// Execute the query to retrieve signed-in clients
+        //std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement("SELECT username FROM users WHERE signed_in = 1"));
+        //std::unique_ptr<sql::ResultSet> res(pstmt->executeQuery());
+
+        // Process the query result
+        //while (res->next()) {
+        //    std::string username = res->getString("username");
+        //    list += ":" + username;
+        //}
+
+        //// Close the statement and connection
+        //pstmt->close();
+
+    //list += getSignedInClients();
+//    sendMessageTo("L:" + getSignedInClients(), clientAddress);
+//}
 
 void handleMessage() {
     command = buffer[0];
@@ -161,13 +128,21 @@ void handleMessage() {
     text.append(&buffer[2]);
     switch (command) {
     case 'R':
-        registerNewClient(text);
+        registerClient(text);
         break;
     case 'C':
         checkClient(text);
         break;
+    case 'V':
+        if (!verifyPw(currentClientName, text)) {
+            sendMessageTo("B:", clientAddress);
+        }
+        break;
+    case 'S':
+        savePw(currentClientName, text);
+        break;
     case 'L':
-        clientsList();
+        sendMessageTo("L:" + getSignedInClients(), clientAddress);
         break;
     case 'M':
         std::cout << "M:" << text << std::endl;
@@ -178,6 +153,7 @@ void handleMessage() {
 }
 
 int main() {
+    if (!openDB()) return -1;
     if (!startServer()) return -1;
 
     while (true) {
@@ -185,9 +161,9 @@ int main() {
         handleMessage();
     }
 
-#ifdef _WIN32
     WSACleanup();
-#endif
+
+    closeBD();
 
     return 0;
 }
