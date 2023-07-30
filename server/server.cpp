@@ -21,11 +21,11 @@ sockaddr_in getAddress(const std::string& IP, int port) {
     return address;
 }
 
-bool sendMessageTo(const std::string& text, const sockaddr_in& address) {
+bool sendMessage(const std::string& text, const sockaddr_in& address) {
     if (sendto(serverSocket, text.c_str(), text.size(), 0, (const sockaddr*)&address, sizeof(address)) == SOCKET_ERROR) {
         return false;
     }
-    std::cout << "      Sent to " << getIP(address) << " : " << getPort(address) << " ---> " << text << std::endl;
+    std::cout << "      Sent to " << getIP(address) << " : " << getPort(address) << "  <<  " << text << std::endl;
     return true;
 }
 
@@ -65,17 +65,18 @@ void getMessage() {
     if (bytesReceived == SOCKET_ERROR) {
         std::cerr << "Failed to receive message" << std::endl;
     }
-    std::cout << "Received from " << getIP(clientAddress) << " : " << getPort(clientAddress) << " ---> " << buffer << std::endl;
+    std::cout << "Received from " << getIP(clientAddress) << " : " << getPort(clientAddress) << "  >>  " << buffer << std::endl;
 }
 
 void registerClient(const std::string& cName) {
     currentClientName = cName;
     if (isSignedUp(cName)) {
-                sendMessageTo("C:", clientAddress); // Instruct the client to verify the password
+                sendMessage("C:", clientAddress); // Instruct the client to verify the password
+                fixAddress(cName, getIP(clientAddress), getPort(clientAddress));
     }
     else {
         insertNewClient(cName, getIP(clientAddress), getPort(clientAddress));
-        sendMessageTo("P:", clientAddress); // Instruct the client to enter the password
+        sendMessage("P:", clientAddress); // Instruct the client to enter the password
     }
 }
 
@@ -83,69 +84,73 @@ void registerClient(const std::string& cName) {
 bool checkClient(const std::string& checkName) {
     currentClientName = checkName;
     std::string text = "E";
+    // if the client is in the chat now
         if (isSignedIn(checkName)) {
             std::cout << checkName << " is in the chat now" << std::endl;
-            text = text + ":" + getIP(clientAddress) + ":" + std::to_string(getPort(clientAddress));
-            sendMessageTo(text, clientAddress);
+            text = text + ":" + getIPfromDB(checkName) + ":" + std::to_string(getPortFromDB(checkName));
+            sendMessage(text, clientAddress);
+            receiver = checkName;
             return true;
         }
+        // if the client is in the datebase but not in the chat now
         if (isSignedUp(checkName)) {
             std::cout << checkName << " is in the list, but now is not in the chat" << std::endl;
-            sendMessageTo("A", clientAddress);
+            sendMessage("A", clientAddress);
             return true;
         }
     std::cout << checkName << " is not in the list" << std::endl;
-    sendMessageTo("N:", clientAddress);
+    sendMessage("N:", clientAddress);
     return false;
 }
-
-//void clientsList() {
-    //std::string list = "L";
-        //sql::mysql::MySQL_Driver* driver = sql::mysql::get_mysql_driver_instance();
-        //std::unique_ptr<sql::Connection> con(driver->connect("tcp://hostname:port", "username", "password"));
-        //con->setSchema("mySQL_chat");
-
-        //// Execute the query to retrieve signed-in clients
-        //std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement("SELECT username FROM users WHERE signed_in = 1"));
-        //std::unique_ptr<sql::ResultSet> res(pstmt->executeQuery());
-
-        // Process the query result
-        //while (res->next()) {
-        //    std::string username = res->getString("username");
-        //    list += ":" + username;
-        //}
-
-        //// Close the statement and connection
-        //pstmt->close();
-
-    //list += getSignedInClients();
-//    sendMessageTo("L:" + getSignedInClients(), clientAddress);
-//}
 
 void handleMessage() {
     command = buffer[0];
     text = "";
     text.append(&buffer[2]);
+    size_t delimiterPos = 0;
     switch (command) {
+    // Registration
     case 'R':
         registerClient(text);
         break;
+    // Check if there is this client in the chat now 
     case 'C':
         checkClient(text);
         break;
+    // Verify password
     case 'V':
         if (!verifyPw(currentClientName, text)) {
-            sendMessageTo("B:", clientAddress);
+            // the wrong password
+            sendMessage("B:", clientAddress);
+        }
+        else {
+            // the correct password
+            sendMessage("O:", clientAddress);
         }
         break;
+    // Save password
     case 'S':
         savePw(currentClientName, text);
         break;
+    // Send the list of signed in clients 
     case 'L':
-        sendMessageTo("L:" + getSignedInClients(), clientAddress);
+        sendMessage("L:" + getSignedInClients(), clientAddress);
         break;
+    // Send message history 
+    case 'H':
+        currentClientName = getNameByAddress(getIP(clientAddress), getPort(clientAddress));
+        sendMessage("H:" + getMessageHistory(currentClientName), clientAddress);
+        break;
+    // Print received message
     case 'M':
         std::cout << "M:" << text << std::endl;
+        delimiterPos = text.find(">");
+
+        if (delimiterPos != std::string::npos) {
+            sender = text.substr(0, delimiterPos);
+            text = text.substr(delimiterPos + 4);
+        }
+        saveMessageIntoDB(sender, receiver, text);
         break;
     default:
         break;

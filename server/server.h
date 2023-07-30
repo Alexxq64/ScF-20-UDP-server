@@ -19,6 +19,8 @@ sockaddr_in clientAddress;
 char buffer[1024];
 int bytesReceived;
 char command;
+std::string sender;
+std::string receiver;
 std::string text;
 std::string currentClientName;
 
@@ -28,7 +30,7 @@ int getPort(const sockaddr_in& socketAddress);
 
 sockaddr_in getAddress(const std::string& IP, int port);
 
-bool sendMessageTo(const std::string& text, const sockaddr_in& address);
+bool sendMessage(const std::string& text, const sockaddr_in& address);
 
 bool startServer();
 
