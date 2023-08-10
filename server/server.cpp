@@ -1,5 +1,6 @@
 ﻿#include "server.h"
 #include "chatDB.h"
+#include "console.h"
 
 
 std::string getIP(const sockaddr_in& socketAddress) {
@@ -151,15 +152,65 @@ void handleMessage() {
             text = text.substr(delimiterPos + 4);
         }
         saveMessageIntoDB(sender, receiver, text);
+        logger->writeLog(sender  + " > " + receiver + ": " + text);
         break;
     default:
         break;
     }
+    std::cout << "\nEnter a command (or 'exit' to quit): \n";
 }
+
+
+void consoleThread() {
+    bool toStop = false;
+    std::string command;
+
+
+    while (!toStop) {
+        std::cout << "\nEnter a command (or 'exit' to quit): \n";
+        std::getline(std::cin, command);
+
+        if (command == "exit") {
+            std::cout << "Bye! See you later!";
+            toStop = true;
+        }
+        else if (command == "last") {
+            std::cout << logger->getLastLog() << std::endl;
+            //std::vector<std::string> logs = logger.getLastNLogs(10); // get 10 last logs
+            //for (const auto& log : logs) {
+            //    std::cout << log << std::endl;
+        }
+        else if (command == "all") {
+            std::cout << std::endl;
+            std::vector<std::string> allLogs = logger->getAllLogs();
+            for (const auto& log : allLogs) {
+                std::cout << log << std::endl;
+            }
+            std::cout << std::endl;
+
+        }
+        else if (command == "test") {
+            std::cout << "------    Test    --------" << std::endl;
+        }
+        else if (command == "help") {
+            std::cout << "last - to get last log\n";
+            std::cout << "all - to get all the logs\n";
+            std::cout << "help - to get list of commands\n";
+            std::cout << "exit - to quit\n";
+        }
+        else std::cout << "Wrong input. Try again. Help to get list of commands.\n";
+    }
+}
+
 
 int main() {
     if (!openDB()) return -1;
     if (!startServer()) return -1;
+    logger = new Logger("log.txt");
+    logger->writeLog("Session opened at " + getNow());
+    //logger->initLog();
+
+    std::thread console(consoleThread);
 
     while (true) {
         getMessage();
@@ -169,6 +220,8 @@ int main() {
     WSACleanup();
 
     closeBD();
+    console.join();
+    delete logger;
 
     return 0;
 }

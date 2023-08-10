@@ -112,7 +112,6 @@ void fixAddress(std::string cName, std::string IP, int port) {
 void insertNewClient(const std::string cName, const std::string IP, int port) {
 	// Insert new client data into the 'users' table in the database
 	std::string insertQuery = "INSERT INTO users (username, ip, port, password) VALUES ('" + cName + "', '" + IP + "', " + std::to_string(port) + ", '" + cName + "')";
-	//std::cout << "Query to insert: " << std::endl << insertQuery.c_str() << std::endl;
 	mysql_query(&mysql, insertQuery.c_str());
 }
 
@@ -272,7 +271,6 @@ std::string getNow() {
 void saveMessageIntoDB(std::string sender, std::string receiver, std::string message) {
 	std::string insertQuery = "INSERT INTO messages (send_date, sender_id, receiver_id, message_text) VALUES ('"
 		+ getNow() + "', " + std::to_string(getClientID(sender)) + ", " + std::to_string(getClientID(receiver)) + ", '" + message + "')";
-	//std::cout << "Query to insert: " << std::endl << insertQuery.c_str() << std::endl;
 	mysql_query(&mysql, insertQuery.c_str());
 }
 
@@ -280,7 +278,6 @@ std::string getMessageHistory(std::string currentClientName) {
 	std::stringstream query;
 	query << "SELECT sender_id, receiver_id, send_date, message_text FROM messages WHERE sender_id = '"
 		<< getClientID(currentClientName) << "' OR receiver_id = '" << getClientID(currentClientName) << "'";
-	std::cout << query.str().c_str() << std::endl;
 	if (mysql_query(&mysql, query.str().c_str()) == 0) {
 		mysql_set_character_set(&mysql, "utf8");
 		MYSQL_RES* result = mysql_store_result(&mysql);
@@ -330,7 +327,6 @@ std::string getNameByID(int id) {
 
 std::string getNameByAddress(const std::string IP, int port){
 	std::string query = "SELECT username FROM users WHERE ip = '" + IP + "'" + " AND port = " + std::to_string(port);
-	std::cout << "Query: " << std::endl << query.c_str() << std::endl;
 	mysql_query(&mysql, query.c_str());
 	res = mysql_store_result(&mysql);
 	return mysql_fetch_row(res)[0];

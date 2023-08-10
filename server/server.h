@@ -9,6 +9,8 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <thread>
+#include "logger.h"
 #include "chatDB.h"
 
 #define PORT 12345
@@ -23,6 +25,8 @@ std::string sender;
 std::string receiver;
 std::string text;
 std::string currentClientName;
+
+Logger* logger;
 
 std::string getIP(const sockaddr_in& socketAddress);
 
@@ -44,4 +48,5 @@ bool checkClient(const std::string& checkName);
 
 void handleMessage();
 
+void consoleThread();
 

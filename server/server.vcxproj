@@ -131,11 +131,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="chatDB.cpp" />
+    <ClCompile Include="logger.cpp" />
     <ClCompile Include="server.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="chatDB.h" />
+    <ClInclude Include="logger.h" />
     <ClInclude Include="server.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="README.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
