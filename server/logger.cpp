@@ -38,12 +38,11 @@
         return Logger::getLastNLogs(1)[0];
     }
 
-
+// doesn't work
     void Logger::initLog() {
         std::unique_lock<std::shared_mutex> lock(mutex);
-        file.open(fileName, std::ios::trunc); // Открываем файл для перезаписи
+        file.open(fileName, std::ios::trunc);
         if (file.is_open()) {
-            // Записываем первую строку
             file << "Session opened at " << getNow() << std::endl;
         }
     }

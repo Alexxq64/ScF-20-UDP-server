@@ -157,7 +157,7 @@ void handleMessage() {
     default:
         break;
     }
-    std::cout << "\nEnter a command (or 'exit' to quit): \n";
+    std::cout << "\nEnter a command ('help' to get list of commands): \n";
 }
 
 
@@ -198,7 +198,7 @@ void consoleThread() {
             std::cout << "help - to get list of commands\n";
             std::cout << "exit - to quit\n";
         }
-        else std::cout << "Wrong input. Try again. Help to get list of commands.\n";
+        else std::cout << "Wrong input. Try again ('help' to get list of commands):\n";
     }
 }
 
